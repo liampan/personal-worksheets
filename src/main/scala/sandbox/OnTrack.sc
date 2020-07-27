@@ -1,16 +1,14 @@
-
-
-
-
 import scala.concurrent.{ExecutionContext, Future}
-
 
 object Test1 {
   // Given these functions:
 
   def f1: Future[Unit] = ???
+
   def f2: Future[Unit] = ???
+
   def f3: Future[Unit] = ???
+
   def f4: Future[Unit] = ???
 
   //Write code to execute them when:
@@ -54,7 +52,7 @@ object Test2 {
   // Given two functions f1 and f2, implement f3 by composing f1 and f2
   val f1: (Int, Int) => Int = (a, b) => a + b
   val f2: Int => String = _.toString
-  val f3: (Int, Int) => String = (f1.tupled andThen f2)(_, _)
+  val f3: (Int, Int) => String = (f1.tupled andThen f2) (_, _)
 
 }
 
@@ -72,13 +70,18 @@ object Test3 {
     def incrementHelper(ints: Seq[Int], index: Int): Seq[Int] = {
       val newValueAtIndex = (ints(index) + 1) % 10
       val updatedList = ints.patch(index, Seq(newValueAtIndex), 1)
-      if (newValueAtIndex == 0) incrementHelper(updatedList, index -1)
+      if (newValueAtIndex == 0) incrementHelper(updatedList, index - 1)
       else updatedList
     }
+
     val listWithBuffer = 0 +: inputList
-    val out = if (inputList.nonEmpty) incrementHelper(listWithBuffer, index = listWithBuffer.length -1) else Seq.empty[Int]
+    val out = if (inputList.nonEmpty) incrementHelper(listWithBuffer, index = listWithBuffer.length - 1) else Seq.empty[Int]
     if (out.headOption.contains(0)) out.tail else out
   }
+
+  //Consideration was made to reverse the list when incrementing to
+  // improve efficiency of the algorithm, however to maintain readability
+  // I opted to decrement the index instead.
 
   //  Nil => Nil
   assert(increment(Nil) == Nil)
@@ -87,7 +90,7 @@ object Test3 {
   //  Seq(1, 2, 3) => Seq(1, 2, 4)
   assert(increment(Seq(1, 2, 3)) == Seq(1, 2, 3))
   //  Seq(9, 9, 9) => Seq(1, 0, 0, 0)
-  assert(increment(Seq(9,9,9)) == Seq(1, 0, 0, 0))
+  assert(increment(Seq(9, 9, 9)) == Seq(1, 0, 0, 0))
 
 
   // A 2nd implementation of increment using foldRight
@@ -123,10 +126,19 @@ trait Test4 {
   //    when f succeeds, g returns something very similar. Feel free to import an external library for
   //  the return type of g.
 
-  def g[A](a: A) = ???
+  def g[A](a: A): Future[Either[Throwable, A]] =
+    f(a).map(Right.apply) recover {
+    case t: Throwable => Left(t)
+  }
+
+  // I have made the assumption that g can return a Future monad of A.
+  // This ensures the futures possible exceptions can be caught
+  // and still return valid type.
+  // Option could work here:  def g[A](a: A): Future[Option[A]]
+  // however using the Either monad allows the throwable to be stored as a Left
+  // meaning we don't lose information of why the future failed.
 
 }
-
 
 object Test5 {
 
@@ -138,14 +150,19 @@ object Test5 {
     def doSomething(someInt: Int): F[Int]
   }
 
-  // MyAlg is a second order type taking a type constructor
-  // as a type parameter
+  // MyAlg is a typeclass which enables adding functionality
+  // to existing classes where traditionally you wouldn't be able to (adhoc polymorphism)
+  // MyAlg adds to the type constructor F[_]
+  // the advantages of typeclasses include forcing returning current types
+  // typeclasses also allow easier testing and refactoring as they
+  // rely on the minimum amount of behaviour to complete a task.
+
 
 }
 
 object Test6 {
 
-  trait MyAlg[F[_]]{
+  trait MyAlg[F[_]] {
     def insertItSomewhere(someInt: Int): F[Unit]
 
     def doSomething(someInt: Int): F[Int]
@@ -153,6 +170,7 @@ object Test6 {
   }
 
   import cats.Functor
+
   class MyProg[F[_]](alg: MyAlg[F]) {
 
     // Given the trait in Q5,
@@ -165,7 +183,7 @@ object Test6 {
     //It should pass the result of `doSomething` to `insertItSomewhere`.
     //Feel free to add external imports.
 
-    val FFunctor = new Functor[F] {
+    val FFunctor: Functor[F] = new Functor[F] {
       override def map[A, B](fa: F[A])(f: A => B): F[B] = ???
     }
 
@@ -175,130 +193,132 @@ object Test6 {
 }
 
 object Test7 {
- // How would you design a REST API for an address book?
- // What endpoints will it have (feel free to provide sample curl requests)?
- // How would you handle errors?
 
-/*
-  The address book would work with a Contact model that would represent contacts in the address book
-  Contacts would provide a name and email, this a model that could be updated depending on business
-  requirements. All Contacts would be identified with an unique ID.
-*/
- final case class Contact(id: Int, name: String, email: String)
-//    {
-//      "id": id,
-//      "name": name,
-//      "email": email
-//    }
+  // How would you design a REST API for an address book?
+  // What endpoints will it have (feel free to provide sample curl requests)?
+  // How would you handle errors?
+
+  /*
+    The address book would work with a Contact model that would represent contacts in the address book
+    Contacts would provide a name and email, this a model that could be updated depending on business
+    requirements. All Contacts would be identified with an unique ID.
+  */
+  final case class Contact(id: Int, name: String, email: String)
+
+  //    {
+  //      "id": id,
+  //      "name": name,
+  //      "email": email
+  //    }
 
 
-/*
-Endpoints:
+  /*
+  Endpoints:
 
-GET  /contacts
-    returns a list of all known contacts
+  GET  /contacts
+      returns a list of all known contacts
 
-    example curl:
-    curl -X GET http://localhost:9000/contacts
+      example curl:
+      curl -X GET http://localhost:9000/contacts
 
-    responses:
-    status: CREATED 200
-    {
-      "contacts" : [
+      responses:
+      status: CREATED 200
+      {
+        "contacts" : [
+          {
+            "id" : 1,
+            "name" : "john smith",
+            "email" : "example@example.com"
+          },
+          {
+            "id" : 2,
+            "name" : "Jane smith",
+            "email" : "example2@example.com"
+          }
+        ]
+      }
+
+  POST /contact
+        Takes a JSON payload of contact details to create new contact,
+        returns the newly created contact with its ID
+
+        example curl:
+
+        curl -d '{"name":"john smith", "email":"example@example.com"}' -H "Content-Type: application/json" -X POST http://localhost:9000/contact
+
+        responses:
+        when the json is read correctly and a new contact is created
+        status: CREATED 201
         {
           "id" : 1,
           "name" : "john smith",
           "email" : "example@example.com"
-        },
-        {
-          "id" : 2,
-          "name" : "Jane smith",
-          "email" : "example2@example.com"
         }
-      ]
-    }
 
-POST /contact
-      Takes a JSON payload of contact details to create new contact,
-      returns the newly created contact with its ID
-
-      example curl:
-
-      curl -d '{"name":"john smith", "email":"example@example.com"}' -H "Content-Type: application/json" -X POST http://localhost:9000/contact
-
-      responses:
-      when the json is read correctly and a new contact is created
-      status: CREATED 201
-      {
-        "id" : 1,
-        "name" : "john smith",
-        "email" : "example@example.com"
-      }
-
-      when there is a problem with the clients request that
-       means a contact can not be created
-      status: BAD_REQUEST 400
-      {
-        "reason": "email contains invalid characters"
-      }
+        when there is a problem with the clients request that
+         means a contact can not be created
+        status: BAD_REQUEST 400
+        {
+          "reason": "email contains invalid characters"
+        }
 
 
-GET  /contact/:id
-      Returns a single contact as JSON if a contact matches with requested ID from uri
+  GET  /contact/:id
+        Returns a single contact as JSON if a contact matches with requested ID from uri
 
-      example curl:
-      curl -X GET http://localhost:9000/contact/1
+        example curl:
+        curl -X GET http://localhost:9000/contact/1
 
-      responses:
-      when the id matches a known contact
-      status: OK 200
-      {
-        "id" : 1,
-        "name" : "john smith",
-        "email" : "example@example.com"
-      }
+        responses:
+        when the id matches a known contact
+        status: OK 200
+        {
+          "id" : 1,
+          "name" : "john smith",
+          "email" : "example@example.com"
+        }
 
-      when the id does not match a known contact
-      status: NOT_FOUND 404
+        when the id does not match a known contact
+        status: NOT_FOUND 404
 
-PUT  /contact/:id
-      Takes a json payload of contact details to update a contact that matches an id,
-      returns the updated contact. ID is not re-writeable.
+  PUT  /contact/:id
+        Takes a json payload of contact details to update a contact that matches an id,
+        returns the updated contact. ID is not re-writeable.
 
-      example curl:
+        example curl:
 
-      curl -d '{"name":"Jim smith", "email":"example@example.com"}' -H "Content-Type: application/json" -X PUT http://localhost:9000/contact/1
+        curl -d '{"name":"Jim smith", "email":"example@example.com"}' -H "Content-Type: application/json" -X PUT http://localhost:9000/contact/1
 
-      responses:
-      when the id matches a known contact and the json can be used to update the contact
-      status: OK 200
-      {
-        "id" : 1,
-        "name" : "Jim smith",
-        "email" : "example@example.com"
-      }
+        responses:
+        when the id matches a known contact and the json can be used to update the contact
+        status: OK 200
+        {
+          "id" : 1,
+          "name" : "Jim smith",
+          "email" : "example@example.com"
+        }
 
-      when the id does not match a known contact but the request is parseable.
-      status: NOT_FOUND 404
+        when the id does not match a known contact but the request is parseable.
+        status: NOT_FOUND 404
 
-      when the body can not be used to update a contact
-      status: BAD_REQUEST 400
-      {
-        "reason": "unable to parse JSON"
-      }
+        when the body can not be used to update a contact
+        status: BAD_REQUEST 400
+        {
+          "reason": "unable to parse JSON"
+        }
 
-DELETE /contact/:id
-      removes the contact from the address book that matches the id
+  DELETE /contact/:id
+        removes the contact from the address book that matches the id
 
-      example curl:
-      curl -X DELETE http://localhost:9000/contact/1
+        example curl:
+        curl -X DELETE http://localhost:9000/contact/1
 
-      responses:
-      when the id matches a known contact and the contact is deleted
-      status: ACCEPTED 202
+        responses:
+        when the id matches a known contact and the contact is deleted
+        status: ACCEPTED 202
 
-      when the id does not match a known contact
-      status: NOT_FOUND 404
+        when the id does not match a known contact
+        status: NOT_FOUND 404
 
- */
+   */
 }
